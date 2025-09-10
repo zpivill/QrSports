@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sports Equipment Borrowing System</title>
+    <title>ยืมอุปกรณ์</title>
+    
     <style>
         * {
             margin: 0;
@@ -13,7 +14,7 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f5f5f5;
+            background: #faebce;
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -21,7 +22,7 @@
         }
 
         .container {
-            background: white;
+            background: rgb(255, 239, 248);
             border-radius: 8px;
             padding: 2rem;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -172,37 +173,40 @@
                 margin: 0.25rem 0;
             }
         }
+        
     </style>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
+    </script>
 </head>
 <body>
     <div class="container">
         <!-- Login Form -->
         <div id="loginForm" class="login-form">
-            <h1>Sports Equipment Tracker</h1>
+            <h1>ยืมอุปกรณ์</h1>
             <div class="form-group">
-                <label for="username">Admin Username:</label>
+                <label for="username">ชื่อผู้ใช้:</label>
                 <input type="text" id="username" placeholder="Enter username">
             </div>
             <div class="form-group">
-                <label for="password">Password:</label>
+                <label for="password">พาสเวิด</label>
                 <input type="password" id="password" placeholder="Enter password">
             </div>
-            <button onclick="login()">Login</button>
+            <button onclick="login()">ลงชื่อเข้าใช้</button>
             <div id="loginError" style="color: red; margin-top: 1rem;"></div>
         </div>
 
         <!-- Main System -->
         <div id="mainSystem" class="main-system hidden">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                <h1>Equipment Borrowing System</h1>
+                <h1>ตารางยืมอุปกรณ์</h1>
                 <button onclick="logout()" style="width: auto; padding: 10px 20px;">Logout</button>
             </div>
 
             <!-- Scanner Section -->
             <div class="scanner-section">
-                <h3>Scan Barcode (15 digits)</h3>
-                <input type="text" id="barcodeInput" class="scanner-input" placeholder="Scan barcode here..." maxlength="15">
-                <p style="margin-top: 1rem; color: #666;">Position cursor in the input field and scan the barcode</p>
+                <h3>สแกนบาร์โค้ด หรือ พิมพ์เลข 15 หลัก</h3>
+                <input type="text" id="barcodeInput" class="scanner-input" placeholder="กดตรงนี้ให้กระพิบก่อนพิมพ์ หรือ สแกน" maxlength="15">
+                <p style="margin-top: 1rem; color: #666;">เช็คเลขหลังบัตรกับเลขที่ขึ้นด้วย</p>
             </div>
 
             <!-- Records Table -->
@@ -210,11 +214,11 @@
                 <table id="recordsTable">
                     <thead>
                         <tr>
-                            <th>Person ID</th>
-                            <th>Equipment</th>
-                            <th>Time</th>
-                            <th>Status</th>
-                            <th>Actions</th>
+                            <th>เลขบัตรประจำตัวนักเรียน</th>
+                            <th>อุปกรณ์ที่ยืม</th>
+                            <th>เวลาที่ยืม</th>
+                            <th>สถานะ</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody id="recordsBody">
@@ -225,9 +229,9 @@
 
             <!-- Controls -->
             <div class="controls">
-                <button onclick="clearToday()">Clear Today's Records</button>
-                <button onclick="exportTXT()">Export as TXT</button>
-                <button onclick="exportPDF()">Export as PDF</button>
+                <button onclick="clearToday()">ล้างประวัติของวันนี้</button>
+                <button onclick="exportTXT()">Save as TXT</button>
+                <button onclick="exportExcel()">Save as XLS</button>
             </div>
         </div>
     </div>
@@ -235,9 +239,8 @@
     <script>
         // Equipment options
         const equipmentOptions = [
-            'Basketball', 'Football', 'Soccer Ball', 'Tennis Racket', 'Badminton Racket',
-            'Volleyball', 'Baseball Bat', 'Hockey Stick', 'Table Tennis Paddle',
-            'Boxing Gloves', 'Skipping Rope', 'Dumbbells', 'Yoga Mat', 'Bicycle'
+            'ลูกบาส', 'ลูกบอล', 'เปตอง', 'ลูปฟุตซอล',
+            'ลูปวอลเล่บอล'
         ];
 
         // In-memory storage for records
@@ -246,8 +249,8 @@
 
         // Admin credentials
         const adminCredentials = {
-            username: 'admin',
-            password: 'sports123'
+            username: '1',
+            password: '1'
         };
 
         function login() {
@@ -260,9 +263,7 @@
                 document.getElementById('mainSystem').classList.remove('hidden');
                 setupBarcodeScanner();
                 errorDiv.textContent = '';
-            } else {
-                errorDiv.textContent = 'Invalid credentials. Use: admin / sports123';
-            }
+            } 
         }
 
         function logout() {
@@ -277,7 +278,7 @@
             
             barcodeInput.addEventListener('input', function(e) {
                 const barcode = e.target.value;
-                if (barcode.length === 15 && /^\d{15}$/.test(barcode)) {
+                if (barcode.length === 5 && /^\d{5}$/.test(barcode)) {
                     processBarcode(barcode);
                     e.target.value = '';
                 }
@@ -321,7 +322,7 @@
                 const equipmentCell = row.insertCell();
                 const equipmentSelect = document.createElement('select');
                 equipmentSelect.className = 'equipment-select';
-                equipmentSelect.innerHTML = '<option value="">Select Equipment</option>';
+                equipmentSelect.innerHTML = '<option value="">เลือกอุปกรณ์</option>';
                 equipmentOptions.forEach(eq => {
                     const option = document.createElement('option');
                     option.value = eq;
@@ -340,7 +341,7 @@
                 const statusCell = row.insertCell();
                 const statusSelect = document.createElement('select');
                 statusSelect.className = 'status-select';
-                ['borrowing', 'returned', 'missing'].forEach(status => {
+                ['กำลังยืมอยุ่', 'คืนแล้ว', 'หาย'].forEach(status => {
                     const option = document.createElement('option');
                     option.value = status;
                     option.textContent = status.charAt(0).toUpperCase() + status.slice(1);
@@ -417,6 +418,75 @@
 
             downloadFile(content, `borrowing_log_${getTodayDate().replace(/\//g, '-')}.txt`, 'text/plain');
         }
+        
+        function exportExcel() {
+            if (borrowingRecords.length === 0) {
+                alert('No records to export!');
+                return;
+            }
+
+            // --- 1. Prepare Data and Headers ---
+            const headers = ['Person ID', 'Equipment', 'Time', 'Status'];
+            
+            // Create the data rows for the worksheet
+            const data = borrowingRecords.map(record => ({
+                'Person ID': record.personId,
+                'Equipment': record.equipment || 'Not selected',
+                'Time': record.time,
+                'Status': record.status.toUpperCase(),
+                
+            }));
+
+            // --- 2. Calculate Column Widths ---
+            const colWidths = headers.map(header => ({ wch: header.length })); // wch = "width in characters"
+
+            data.forEach(row => {
+                Object.keys(row).forEach((key, i) => {
+                    const cellValue = row[key] ? String(row[key]) : '';
+                    if (cellValue.length > colWidths[i].wch) {
+                        colWidths[i].wch = cellValue.length;
+                    }
+                });
+            });
+            
+            // Add a little extra padding to each column
+            colWidths.forEach(col => { col.wch += 20; });
+
+
+            // --- 3. Create Worksheet and Workbook ---
+            // Create the main data worksheet
+            const worksheet = XLSX.utils.json_to_sheet(data);
+            
+            
+            // Set the calculated column widths
+            worksheet['!cols'] = colWidths;
+            
+            // Create the metadata rows
+            
+            const metadata = [
+                ['SPORTS EQUIPMENT BORROWING LOG'],
+                [`Date: ${getTodayDate()}`],
+                [`Generated: ${new Date().toLocaleString()}`],
+                [`Total Records: ${borrowingRecords.length}`],
+                [] // Blank row
+            ];
+            
+
+            // Prepend the metadata to the worksheet
+            XLSX.utils.sheet_add_aoa(worksheet, metadata,  { origin: 'E1' });
+
+
+            // Create a new workbook and append the worksheet
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Borrowing Log');
+
+
+            // --- 4. Generate and Trigger Download ---
+            const fileName = `Borrowing_Log_${getTodayDate()}.xlsx`;
+            XLSX.writeFile(workbook, fileName);
+
+        }
+
 
         function exportPDF() {
             if (borrowingRecords.length === 0) {
