@@ -218,6 +218,7 @@
                             <th>อุปกรณ์ที่ยืม</th>
                             <th>เวลาที่ยืม</th>
                             <th>สถานะ</th>
+                            <th>เวลาคืน</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -307,6 +308,11 @@
         return `${year}-${month}-${day}`;
         }
 
+        function formatDateTime(d) {
+        const pad = n => String(n).padStart(2,'0');
+        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+        }
+
         function saveDataToLocalStorage() {
         const dataToStore = {
             date: getTodayDateString(),
@@ -374,14 +380,15 @@
 
         function processBarcode(barcode) {
             const personId = barcode.slice(-5); // Last 5 digits
-            const currentTime = new Date().toLocaleString();
+            const currentTime = formatDateTime(new Date());
             
-            const record = {
+                const record = {
                 id: recordIdCounter++,
                 personId: personId,
                 equipment: '',
                 time: currentTime,
                 status: 'กำลังยืมอยู่',
+                returnTime: '',
                 fullBarcode: barcode
             };
 
@@ -460,6 +467,10 @@
                 statusSelect.className += ` status-${record.status}`;
                 statusCell.appendChild(statusSelect);
 
+                // Return time
+                const returnTimeCell = row.insertCell();
+                returnTimeCell.textContent = record.returnTime || '';
+
                 // Actions
                 const actionsCell = row.insertCell();
                 const deleteBtn = document.createElement('button');
@@ -477,6 +488,11 @@
             if (record) {
                 record[field] = value;
                 if (field === 'status') {
+                    if (value === 'คืนแล้ว') {
+                        record.returnTime = formatDateTime(new Date());
+                    } else {
+                        record.returnTime = '';
+                    }
                     renderRecords(); // Re-render to update status styling
                     saveDataToLocalStorage();
                 }
@@ -500,7 +516,7 @@
         }
 
         function getTodayDate() {
-            return new Date().toLocaleDateString();
+            return getTodayDateString();
         }
 
         function exportTXT() {
@@ -510,8 +526,8 @@
             }
 
             let content = `SPORTS EQUIPMENT BORROWING LOG\n`;
-            content += `Date: ${getTodayDate()}\n`;
-            content += `Generated: ${new Date().toLocaleString()}\n`;
+            content += `Date: ${getTodayDateString()}\n`;
+            content += `Generated: ${formatDateTime(new Date())}\n`;
             content += `Total Records: ${borrowingRecords.length}\n\n`;
             content += `${'='.repeat(80)}\n\n`;
 
@@ -521,6 +537,7 @@
                 content += `  Equipment: ${record.equipment || 'Not selected'}\n`;
                 content += `  Time: ${record.time}\n`;
                 content += `  Status: ${record.status.toUpperCase()}\n`;
+                content += `  Return Time: ${record.returnTime || 'N/A'}\n`;
                 content += `  Full Barcode: ${record.fullBarcode}\n\n`;
             });
 
@@ -537,7 +554,7 @@
             }
 
             // --- 1. Prepare Data and Headers ---
-            const headers = ['Person ID', 'Equipment', 'Time', 'Status'];
+            const headers = ['Person ID', 'Equipment', 'Time', 'Status', 'Return Time'];
             
             // Create the data rows for the worksheet
             const data = borrowingRecords.map(record => ({
@@ -545,6 +562,7 @@
                 'Equipment': record.equipment || 'Not selected',
                 'Time': record.time,
                 'Status': record.status.toUpperCase(),
+                'Return Time': record.returnTime || '',
                 
             }));
 
@@ -576,15 +594,15 @@
             
             const metadata = [
                 ['SPORTS EQUIPMENT BORROWING LOG'],
-                [`Date: ${getTodayDate()}`],
-                [`Generated: ${new Date().toLocaleString()}`],
+                [`Date: ${getTodayDateString()}`],
+                [`Generated: ${formatDateTime(new Date())}`],
                 [`Total Records: ${borrowingRecords.length}`],
                 [] // Blank row
             ];
             
 
-            // Prepend the metadata to the worksheet
-            XLSX.utils.sheet_add_aoa(worksheet, metadata,  { origin: 'E1' });
+            // Prepend the metadata to the worksheet at a safe column (far right to avoid overlapping data)
+            XLSX.utils.sheet_add_aoa(worksheet, metadata,  { origin: 'H1' });
 
 
             // Create a new workbook and append the worksheet
@@ -593,7 +611,7 @@
 
 
             // --- 4. Generate and Trigger Download ---
-            const fileName = `Borrowing_Log_${getTodayDate()}.xlsx`;
+            const fileName = `Borrowing_Log_${getTodayDateString()}.xlsx`;
             XLSX.writeFile(workbook, fileName);
 
         }
@@ -625,8 +643,8 @@
                 <body>
                     <h1>Sports Equipment Borrowing Log</h1>
                     <div class="header">
-                        <p><strong>Date:</strong> ${getTodayDate()}</p>
-                        <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
+                        <p><strong>Date:</strong> ${getTodayDateString()}</p>
+                        <p><strong>Generated:</strong> ${formatDateTime(new Date())}</p>
                         <p><strong>Total Records:</strong> ${borrowingRecords.length}</p>
                     </div>
                     <table>
